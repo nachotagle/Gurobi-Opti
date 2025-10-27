@@ -1,8 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Parámetros ARTIFICIALES de prueba para el modelo de relaves.
-Coloca este archivo en el mismo directorio que `modelo_gurobi_relaves.py`.
-"""
+"
 
 ##
 #productos:
