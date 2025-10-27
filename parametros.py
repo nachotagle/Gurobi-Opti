@@ -1,6 +1,3 @@
-
-
-##
 #productos:
 #1:anotar nombre para facilidad
 #2:anotar nombre para facilidad
