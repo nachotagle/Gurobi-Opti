@@ -4,70 +4,85 @@ Parámetros ARTIFICIALES de prueba para el modelo de relaves.
 Coloca este archivo en el mismo directorio que `modelo_gurobi_relaves.py`.
 """
 
-# Dimensiones
-T = 20  # días
-M = 3   # productos
-K = 2   # relaves
+##
+#productos:
+#1:anotar nombre para facilidad
+#2:anotar nombre para facilidad
+#3:anotar nombre para facilidad
 
-# Conjuntos explícitos (opcionales, solo para claridad si alguien imprime)
+# Dimensiones
+T = 365  # días
+M = 3    # productos (1: Cu conc, 2: Mo conc, 3: Au conc)
+K = 2    # relaves
+
 I_days = range(1, T+1)
 I_prod = range(1, M+1)
 I_tail = range(1, K+1)
 
-# Coeficientes de agua por producto (m^3 por unidad producida)
-a = {1: 1.2, 2: 0.8, 3: 1.6}
+# m³ de agua fresca por t de producto
+# ~30–40 m3/t conc Cu (ver supuestos); Mo y Au similares o algo mayores
+a = {1: 34.0, 2: 40.0, 3: 36.0}
 
-# Emisiones por unidad (ton CO2e por unidad producida)
-w = {1: 0.020, 2: 0.030, 3: 0.015}
+# tCO2e por t de producto (inferencia desde 4.6 tCO2e/t Cu refinado)
+w = {1: 1.2, 2: 1.5, 3: 1.3}
 
-# Precios de venta (normal) y sobre-demanda
-# u < g para reflejar descuento por ventas adicionales
+# Precios de venta "en planta" (US$/t producto)
+g = {1: 4500.0, 2: 9000.0, 3: 6000.0}
+# Sobre-demanda con descuento (u < g)
+u = {1: 4000.0, 2: 8200.0, 3: 5400.0}
 
-g = {1: 100.0, 2: 90.0, 3: 110.0}
-u = {1: 85.0, 2: 78.0, 3: 95.0}
+# Costos de producción (US$/t producto) e inventario (US$/t·día)
+c = {1: 1200.0, 2: 2000.0, 3: 1500.0}
+m = {1: 0.30, 2: 0.30, 3: 0.30}
 
-# Costos de producción e inventario
-c = {1: 20.0, 2: 16.0, 3: 22.0}
-m = {1: 0.20, 2: 0.20, 3: 0.20}
-
-# Volumen por unidad en bodega (para la restricción de capacidad N)
+# Volumen por t en bodega (m³/t, densidad aparente ~1 t/m³)
 n = {1: 1.0, 2: 1.0, 3: 1.0}
 
-# Límites de producción diarios
-Jmin = {1: 40.0, 2: 35.0, 3: 45.0}
-Jmax = {1: 100.0, 2: 90.0, 3: 110.0}
+# Límites de producción diarios (t/día de producto)
+# Orden de magnitud para una planta mediana: Cu conc 1500–2500 t/d, Mo 20–40, Au 30–70
+Jmin = {1: 1200.0, 2: 15.0, 3: 25.0}
+Jmax = {1: 2200.0, 2: 45.0, 3: 70.0}
 
-# Demanda amplia para no restringir (puedes reemplazar por series reales)
+# Demanda suficiente (no restrictiva)
 d = {(i, t): Jmax[i] * 2 for i in I_prod for t in I_days}
 
-# Parámetros de relaves
-F = {1: 0.20, 2: 0.25}   # fracción de D_t que va a cada relave
-Qmax = {1: 1e6, 2: 1e6}  # caudal máximo bombeo desde cada relave
-Hmax = {1: 1e7, 2: 1e7}  # capacidad de cada relave
-I0 = {1: 0.0, 2: 0.0}    # inventario inicial de agua en relaves
-C = {1: 0.10, 2: 0.12}   # costo por m^3 bombeado
-activacion_fija = {1: 0.0, 2: 0.0}  # costo fijo por activar bomba (y)
+# Fracción del agua de proceso a cada relave (suman ≈1)
+F = {1: 0.55, 2: 0.45}
+
+# Capacidades y costos hídricos
+# Qmax en m³/día de bombeo desde cada relave
+Qmax = {1: 200_000.0, 2: 200_000.0}
+# Capacidad de cada relave (m³)
+Hmax = {1: 3_000_000.0, 2: 3_000_000.0}
+# Inventario inicial de agua en relaves (m³)
+I0 = {1: 500_000.0, 2: 500_000.0}
+# Costo por m³ bombeado desde relave (US$/m³) — energía/opex
+C = {1: 0.12, 2: 0.12}
+# Costo fijo por activar bomba
+activacion_fija = {1: 0.0, 2: 0.0}
 
 # Embalse y agua externa
-Vmax = 1e7   # capacidad máxima del embalse
-L0 = 0.0     # agua inicial en embalse
-P = 0.25     # costo por m^3 de agua externa
-Pmax = 1e12  # presupuesto diario (alto para no activar)
+Vmax = 5_000_000.0   # m³
+L0 = 500_000.0       # m³
+P = 2.0              # US$/m³ de agua externa (desalada/traída)
+Pmax = 5_000_000.0   # US$/día (presupuesto diario)
 
-# Emisiones (umbral anual) y penalidad
-B = 0.0    # umbral; lo ponemos 0 para simplificar la prueba
-mu = 0.0   # multa por excedente diario (apagada en demo)
+# Emisiones: umbral anual y multa (US$/tCO2e)
+# B es umbral DIARIO en tu modelo (V[t] = sum_i x w - B). Si quieres anual,
+# puedes repartir un presupuesto anual entre 365 días:
+B_anual = 300_000.0             # tCO2e/año (ejemplo)
+B = B_anual / 365.0             # ~ 822 tCO2e/día
+mu = 5.0                        # impuesto verde Chile ~5 US$/tCO2e
 
-# Capacidad de almacenamiento total
-N = 1e9
+# Capacidad total de almacenamiento (m³)
+N = 2_000_000.0
 
-# Big-M para activaciones
+# Big-M
 Mbig = 1e6
 
-# Parámetros opcionales: inventarios iniciales por producto en t=0
+# Inventario inicial por producto (t) en t=0 (para tu regla con IM0)
 IM0 = {1: 0.0, 2: 0.0, 3: 0.0}
 
-# === Diccionario principal ===
 params = {
     "T": T, "M": M, "K": K,
     "Vmax": Vmax, "P": P, "Pmax": Pmax, "N": N, "Mbig": Mbig,
