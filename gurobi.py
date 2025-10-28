@@ -39,7 +39,7 @@ def build_model(params: Dict[str, Any]):
     R = m.addVar(vtype=GRB.BINARY, name="R")                                # R (paga multa)
 
     # Flujo de caja
-    A = m.addVars(I_days, name="A")                                         # A_t (puede ser real, sin cota)
+    A = m.addVars(I_days, name="A", lb=-GRB.INFINITY)                       # A_t (puede ser real, sin cota)
 
     # === Restricciones ===
     # 1. Embalse: L_t = L_{t-1} + sum_k B_{k,t} + E_t - D_t
@@ -102,15 +102,13 @@ def build_model(params: Dict[str, Any]):
     for t in I_days:
         term_bombas = quicksum(params["C"][k]*Bk[k,t] + params["f"][k]*y[k,t] for k in I_tail)
         m.addConstr(term_bombas + params["P"]*E[t] <= params["Pmax"], name=f"presupuesto_{t}")
-
-    # 11. Multa por exceso de emisiones (uso de M grande) — replicada para cada i como en el texto
-    annual_emissions = quicksum(x[i,t]*params["w"][i] for i in I_prod for t in I_days)
-    for i in I_prod:
-        m.addConstr(annual_emissions - params["B"] <= params["Mbig"] * R, name=f"multa_M_{i}")
-
-    # 12. Exceso de emisiones diario y activación con M grande
+    
+    # 11. Exceso de emisiones diario (V_t = emisiones_diarias - umbral_diario)
     for t in I_days:
-        m.addConstr(V[t] == quicksum(x[i,t]*params["w"][i] for i in I_prod) - params["B"], name=f"V_def_{t}")
+        m.addConstr(V[t] >= quicksum(x[i,t]*params["w"][i] for i in I_prod) - params["B"], name=f"V_def_{t}")
+
+    # 12. Multa por exceso de emisiones (uso de M grande para activar R)
+    for t in I_days:
         m.addConstr(V[t] <= params["Mbig"] * R, name=f"V_le_MR_{t}")
 
     # 13. Ventas dentro/sobre demanda
