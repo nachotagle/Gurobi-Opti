@@ -1,6 +1,10 @@
 from gurobipy import Model, GRB, quicksum
 from typing import Dict, Any, Iterable
 from parametrosReales import params
+try:
+    from excel import write_solution_to_excel
+except Exception:
+    write_solution_to_excel = None
 
 
 # Tipos para claridad
@@ -147,10 +151,71 @@ def build_model(params: Dict[str, Any]):
 
 
 if __name__ == "__main__":
+
+
+    def print_solution(m):
+        """Imprime el objetivo (si está) y el valor de todas las variables encontradas en la solución."""
+        # intentar obtener número de soluciones
+        try:
+            sol_count = int(m.SolCount)
+        except Exception:
+            sol_count = 0
+
+        if sol_count == 0 and m.status != GRB.OPTIMAL:
+            print("No se encontró solución (SolCount=0). Estado del modelo:", m.status)
+            return
+
+        # Imprimir objetivo cuando esté disponible
+        try:
+            print("\nObjetivo:", m.objVal)
+        except Exception:
+            try:
+                print("\nObjetivo (atributo ObjVal):", m.getAttr("ObjVal"))
+            except Exception:
+                pass
+
+        # Imprimir variables ordenadas por nombre
+        vars_list = list(m.getVars())
+        vars_list.sort(key=lambda v: v.VarName)
+
+        print("\nValores de variables (nombre: valor):")
+        for v in vars_list:
+            try:
+                val = v.X
+            except Exception:
+                try:
+                    val = v.getAttr("X")
+                except Exception:
+                    val = None
+
+            if val is None:
+                # no hay valor disponible para esta variable en la solución
+                continue
+
+            # mostrar enteros/binaries como enteros si están cerca de un entero
+            try:
+                vtype = v.VType
+            except Exception:
+                vtype = None
+
+            if vtype in (GRB.BINARY, GRB.INTEGER) or abs(val - round(val)) < 1e-6:
+                print(f"{v.VarName}: {int(round(val))}")
+            else:
+                print(f"{v.VarName}: {float(val):.6f}")
+
+
     model = build_model(params)
     # model.Params.OutputFlag = 0  # Silenciar salida si se desea
     model.optimize()
     
     # Impresión rápida de valor objetivo (si el modelo es factible)
     if model.status == GRB.OPTIMAL:
+        #print_solution(model)
         print("Z* =", model.objVal)
+        # Export to Excel if helper is available
+        if write_solution_to_excel is not None:
+            try:
+                write_solution_to_excel(model, filename="solution.xlsx", include_zeros=False)
+            except Exception as e:
+                print("Warning: could not write solution to Excel:", e)
+        
