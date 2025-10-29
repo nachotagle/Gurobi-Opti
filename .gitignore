@@ -1,0 +1,13 @@
+# Python cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyc
+
+# Byte-compiled / optimized / DLL files
+*.so
+
+# Editor directories
+.vscode/
+.idea/
+
