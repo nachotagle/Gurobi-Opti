@@ -20,8 +20,8 @@ g = {1: 11002, 2: 105.56} # Normal
 u = {1: 11002, 2: 105.56} # Por sobre demanda (Por ahora igual)
 
 # Costos de producción (US$/ton producto) e almacenaje (US$/ton·día)
-c = {1: 4585.6, 2: 50.9}
-m = {1: 0.001392, 2: 0.03104}
+Cp = {1: 4585.6, 2: 50.9}   # Costo de producción
+Ca = {1: 0.001392, 2: 0.03104} # Costo de almacenaje
 
 # Volumen por ton en bodega (m³/ton)
 n = {1: 0.348, 2: 0.776}
@@ -45,8 +45,8 @@ Hmax = {1: 1643000000, 2: 790000}
 I0 = {1: 0, 2: 0}
 
 # Costo variable y fijo por m³ bombeado desde relave (US$/m³) — energía/opex
-C = {1: 32.7, 2: 10.9}
-activacion_fija = {1: 69.9, 2: 69.9}
+Cv = {1: 32.7, 2: 10.9}   # Costo variable
+Cf = {1: 69.9, 2: 69.9}   # Costo fijo
 
 # Capacidad maxima de almacenamiento de agua en el embalse (m³)
 Vmax = 6000000
@@ -55,29 +55,29 @@ Vmax = 6000000
 L0 = 0
 
 # Costo y presupuesto del bombeo de agua externa (US$/m³ y US$/día)
-P = 5.45
-Pmax = 1e6
+P = 5.45      # Costo agua externa
+Pmax = 1e6   # Presupuesto máximo diario
 
 # Umbra de emisiones diarias permitidas (ton SO2/día)
 B = 110
 
 # Multa por exceso de emisiones (US$/ton SO2)
-mu = 0
+m = 0
 
 # Maximo de almacenamiento en inventario de productos (ton)
 N = 1e6
 
-Mbig = 1e6
-
 # Inventario inicial por producto (ton)
 IM0 = {1: 0, 2: 0}
+
+Mbig = 1e6
 
 params = {
     "T": T, "M": M, "K": K,
     "Vmax": Vmax, "P": P, "Pmax": Pmax, "N": N, "Mbig": Mbig,
-    "L0": L0, "mu": mu,
-    "Hmax": Hmax, "Qmax": Qmax, "C": C, "f": activacion_fija, "F": F, "I0": I0,
-    "a": a, "w": w, "g": g, "u": u, "n": n, "m": m, "c": c,
+    "L0": L0, "m": m,
+    "Hmax": Hmax, "Qmax": Qmax, "Cv": Cv, "Cf": Cf, "F": F, "I0": I0,
+    "a": a, "w": w, "g": g, "u": u, "n": n, "Ca": Ca, "Cp": Cp,
     "Jmin": Jmin, "Jmax": Jmax, "d": d,
     "B": B,
     "IM0": IM0,
