@@ -1,0 +1,84 @@
+# parametros_reales.py
+# Parámetros reales extraídos del informe Datos_E3.pdf
+
+T = 365  # días
+M = 2    # productos (1: Cu, 2: Fe)
+K = 2    # relaves
+
+I_days = range(1, T+1)
+I_prod = range(1, M+1)
+I_tail = range(1, K+1)
+
+# m³ de agua fresca usados en faena al producir una ton del producto i
+a = {1: 116.9, 2: 28.6}
+
+# cantidad de contaminante SO2 por ton de producto (emisiones)
+w = {1: 0.0756, 2: 0.0017}
+
+# Precios de venta "en planta" (US$/ton producto)
+g = {1: 11002, 2: 105.56} # Normal
+u = {1: 11002, 2: 105.56} # Por sobre demanda (Por ahora igual)
+
+# Costos de producción (US$/ton producto) e almacenaje (US$/ton·día)
+c = {1: 4585.6, 2: 50.9}
+m = {1: 0.001392, 2: 0.03104}
+
+# Volumen por ton en bodega (m³/ton)
+n = {1: 0.348, 2: 0.776}
+
+# Límites de producción diarios (ton/día de producto)
+Jmin = {1: 0, 2: 0}
+Jmax = {1: 1569.8, 2: 7068.68}
+
+d = {(i, t): Jmax[i] * 2 for i in I_prod for t in I_days}  # Demanda suficiente (no restrictiva)
+
+# Fracción de agua a cada relave
+F = {1: 0.3, 2: 0.7}
+
+# Capacidad maxima de transporte de agua desde relaves (m³)
+Qmax = {1: 136272, 2: 136272}
+
+# Capacidad maxima de almacenamiento de agua de cada relave (m³)
+Hmax = {1: 1643000000, 2: 790000}
+
+# Cantidad inicial de agua por relave (m³)
+I0 = {1: 0, 2: 0}
+
+# Costo variable y fijo por m³ bombeado desde relave (US$/m³) — energía/opex
+C = {1: 32.7, 2: 10.9}
+activacion_fija = {1: 69.9, 2: 69.9}
+
+# Capacidad maxima de almacenamiento de agua en el embalse (m³)
+Vmax = 6000000
+
+# Almacenamiento inicial de agua en embalse (m³)
+L0 = 0
+
+# Costo y presupuesto del bombeo de agua externa (US$/m³ y US$/día)
+P = 5.45
+Pmax = 1e6
+
+# Umbra de emisiones diarias permitidas (ton SO2/día)
+B = 110
+
+# Multa por exceso de emisiones (US$/ton SO2)
+mu = 0
+
+# Maximo de almacenamiento en inventario de productos (ton)
+N = 1e6
+
+Mbig = 1e6
+
+# Inventario inicial por producto (ton)
+IM0 = {1: 0, 2: 0}
+
+params = {
+    "T": T, "M": M, "K": K,
+    "Vmax": Vmax, "P": P, "Pmax": Pmax, "N": N, "Mbig": Mbig,
+    "L0": L0, "mu": mu,
+    "Hmax": Hmax, "Qmax": Qmax, "C": C, "f": activacion_fija, "F": F, "I0": I0,
+    "a": a, "w": w, "g": g, "u": u, "n": n, "m": m, "c": c,
+    "Jmin": Jmin, "Jmax": Jmax, "d": d,
+    "B": B,
+    "IM0": IM0,
+}

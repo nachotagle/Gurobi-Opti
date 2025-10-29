@@ -1,6 +1,6 @@
 from gurobipy import Model, GRB, quicksum
 from typing import Dict, Any, Iterable
-from parametros import params
+from parametrosReales import params
 
 
 # Tipos para claridad
