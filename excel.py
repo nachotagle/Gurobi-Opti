@@ -2,6 +2,70 @@
 
 from typing import Optional
 
+def read_params_from_excel(filename: str = "parametros_reales.xlsx", sheet_names=None):
+	"""Read parameters from an Excel file into a dictionary.
+
+	The sheet should contain two columns: key | value
+	Values can be numbers, strings, or Python literals (dicts, lists) encoded as text.
+	The function will attempt to parse string values using ast.literal_eval, falling back
+	to the raw string if parsing fails.
+
+	Parameters
+	- filename: path to the xlsx file
+	- sheet_names: optional list of sheet names to try (in order). If None, will try
+	  ['parametros_reales', 'params'] then the active sheet.
+	"""
+	try:
+		from openpyxl import load_workbook
+	except Exception:
+		print("openpyxl is required to read Excel files. Install with: pip install openpyxl")
+		return {}
+
+	import ast
+
+	try:
+		wb = load_workbook(filename=filename, data_only=True)
+	except Exception as e:
+		print(f"Could not open Excel file {filename}: {e}")
+		return {}
+
+	if sheet_names is None:
+		sheet_names = ["parametros_reales", "params"]
+
+	ws = None
+	for s in sheet_names:
+		if s in wb.sheetnames:
+			ws = wb[s]
+			break
+
+	if ws is None:
+		# fallback to active sheet
+		ws = wb.active
+
+	params = {}
+	for row in ws.iter_rows(min_row=1, values_only=True):
+		if not row or row[0] is None:
+			continue
+		key = str(row[0]).strip()
+		val_cell = row[1] if len(row) > 1 else None
+		if val_cell is None:
+			params[key] = None
+			continue
+
+		# attempt to parse
+		if isinstance(val_cell, str):
+			s = val_cell.strip()
+			try:
+				parsed = ast.literal_eval(s)
+			except Exception:
+				parsed = s
+			params[key] = parsed
+		else:
+			# numeric, boolean, date, etc.
+			params[key] = val_cell
+
+	return params
+
 
 def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: bool = False, sheet_name: str = "Solution"):
 	try:
@@ -61,10 +125,26 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 			print("Could not create Excel workbook:", e)
 			return
 
+		# write objective and status in top-left summary
+		status = getattr(m, "status", None)
+		try:
+			obj = m.objVal
+		except Exception:
+			try:
+				obj = m.getAttr("ObjVal")
+			except Exception:
+				obj = None
+
+		ws.write(0, 0, "Z*")
+		ws.write(0, 1, obj if obj is not None else "(n/a)")
+		ws.write(1, 0, "Model status:")
+		ws.write(1, 1, str(status))
+
+		start_row = 3
 		# header
-		ws.write(0, 0, "Variable")
+		ws.write(start_row, 0, "Variable")
 		for j, base in enumerate(sorted(parsed.keys()), start=1):
-			ws.write(0, j, base)
+			ws.write(start_row, j, base)
 
 		# single row with values (use first key if multiple)
 		for j, base in enumerate(sorted(parsed.keys()), start=1):
@@ -72,7 +152,7 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 			# pick a representative value
 			if vals:
 				first = next(iter(vals.values()))
-				ws.write(1, j, first)
+				ws.write(start_row + 1, j, first)
 
 		try:
 			wb.close()
@@ -106,18 +186,34 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 		print("Could not create Excel workbook:", e)
 		return
 
+	# write objective and status in top-left summary
+	status = getattr(m, "status", None)
+	try:
+		obj = m.objVal
+	except Exception:
+		try:
+			obj = m.getAttr("ObjVal")
+		except Exception:
+			obj = None
+
+	ws.write(0, 0, "Z*")
+	ws.write(0, 1, obj if obj is not None else "(n/a)")
+	ws.write(1, 0, "Model status:")
+	ws.write(1, 1, str(status))
+
+	start_row = 3
 	# Header row: Day then one column per variable-instance
-	ws.write(0, 0, "Day")
+	ws.write(start_row, 0, "Day")
 	for j, (base, pk) in enumerate(columns, start=1):
 		if pk == ():
 			colname = base
 		else:
 			colname = base + "_" + "_".join(str(x) for x in pk)
-		ws.write(0, j, colname)
+		ws.write(start_row, j, colname)
 
 	# Fill rows for days 1..max_day
 	for day in range(1, max_day + 1):
-		ws.write(day, 0, day)
+		ws.write(start_row + day, 0, day)
 		for j, (base, pk) in enumerate(columns, start=1):
 			key = pk + (day,) if pk != () else (day,)
 			val = parsed.get(base, {}).get(key, None)
@@ -125,9 +221,9 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 				# missing entry -> leave blank
 				continue
 			if abs(val - round(val)) < 1e-9:
-				ws.write(day, j, int(round(val)))
+				ws.write(start_row + day, j, int(round(val)))
 			else:
-				ws.write(day, j, float(val))
+				ws.write(start_row + day, j, float(val))
 
 	try:
 		wb.close()

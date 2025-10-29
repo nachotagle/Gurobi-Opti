@@ -1,10 +1,16 @@
 from gurobipy import Model, GRB, quicksum
 from typing import Dict, Any, Iterable
-from parametrosReales import params
-try:
-    from excel import write_solution_to_excel
-except Exception:
-    write_solution_to_excel = None
+
+
+##importa los parametros desde excel o desde el modulo de python
+# try to read params from Excel first
+from excel import read_params_from_excel, write_solution_to_excel
+params = read_params_from_excel("parametros_reales.xlsx")
+if not params:
+    # fallback to python module if excel read failed
+    from parametrosReales import params as params_module
+    params = params_module
+
 
 
 # Tipos para claridad
