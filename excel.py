@@ -3,10 +3,12 @@ import pandas as pd
 import pandas as pd
 
 def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
+    import openpyxl ##se necesita esta libreria para leer excel
     try:
         xl = pd.ExcelFile(filename)
     except Exception as e:
-        print("openpyxl is required to read Excel files. Install with: pip install openpyxl")
+        print("openpyxl necesita ser instalado o archivo parametros_reales esta abierto")
+        quit()
         return {}
 
     # ---- Escalares ----
@@ -75,8 +77,7 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
 
     # ---- Big-M razonable para ventas
     Mbig = max((N / max(n[i], 1e-9)) + Jmax[i] for i in range(1, M+1))
-
-    print(f"[Excel] Cargado: T={T}, M={M}, K={K} | hojas={xl.sheet_names}")
+	
     return {
         "T": T, "M": M, "K": K,
         "Vmax": Vmax, "L0": L0, "B": B, "m": m, "P": P, "Pmax": Pmax, "N": N,
@@ -87,7 +88,8 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
 
 def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: bool = True, sheet_name: str = "Solution"):
 	import xlsxwriter#libreria para crear excel
-	
+
+
 	parsed = {}  
 	max_day = 0
 

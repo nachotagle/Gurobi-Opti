@@ -2,17 +2,15 @@ from gurobipy import Model, GRB, quicksum
 from typing import Dict, Any, Iterable
 
 
-##importa los parametros desde excel 
+##importa los parametros desde excel
+# para que funcione, se debe tener instalada la libreria openpyxl y XlsxWriter
+# tambien al ejecutar el main.py los excel deben estar cerrados 
 from excel import read_params_from_excel, write_solution_to_excel
 params = read_params_from_excel("parametros_reales.xlsx")
-if not params:
-    from parametrosReales import params as params_module
-    params = params_module
 
 
 # Tipos para claridad
 Index = Iterable[int]
-
 
 def build_model(params: Dict[str, Any]):
     # === Conjuntos ===
