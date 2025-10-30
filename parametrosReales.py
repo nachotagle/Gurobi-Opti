@@ -30,7 +30,8 @@ n = {1: 0.348, 2: 0.776}
 Jmin = {1: 784.9, 2: 3534.34}
 Jmax = {1: 1569.8, 2: 7068.68}
 
-d = {(i, t): Jmax[i] * 2 for i in I_prod for t in I_days}  # Demanda suficiente (no restrictiva)
+di = {1: 1412.82, 2: 6361.81}
+d = {(i, t): di[i] for i in I_prod for t in I_days}  # Demanda suficiente (no restrictiva)
 
 # Fracción de agua a cada relave
 F = {1: 0.3, 2: 0.4}
