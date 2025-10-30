@@ -3,7 +3,9 @@ import pandas as pd
 import pandas as pd
 
 def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
-    import openpyxl ##se necesita esta libreria para leer excel
+    # Se necesita esta libreria para leer excel
+    import openpyxl
+
     try:
         xl = pd.ExcelFile(filename)
     except Exception as e:
@@ -25,6 +27,7 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
     P   = float(scal.get("P", 0.0))
     Pmax= float(scal.get("Pmax", 1e9))
     N   = float(scal.get("N", 1e12))
+    Mbig = float(scal.get("Mbig", 1e12))
 
     # ---- PorProducto ----
     prod = pd.read_excel(filename, sheet_name="PorProducto")
@@ -54,7 +57,7 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
     Cv  = to_map_tail("Cv (US$/m³)")
     Cf  = to_map_tail("Cf (US$)")
 
-    # ---- Demanda (formato ancho: columnas Prod1, Prod2, ...) ----
+    # ---- Demanda ----
     d = {}
     if "Demanda" in xl.sheet_names:
         dem = pd.read_excel(filename, sheet_name="Demanda")
@@ -68,27 +71,17 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
                         val = float(row[c])
                         d[(i, t)] = val
 
-    if not d:
-        # fallback: demanda no restrictiva
-        I_prod = range(1, M+1); I_days = range(1, T+1)
-        for i in I_prod:
-            for t in I_days:
-                d[(i,t)] = 2.0 * Jmax[i]
-
-    # ---- Big-M razonable para ventas
-    Mbig = max((N / max(n[i], 1e-9)) + Jmax[i] for i in range(1, M+1))
-	
     return {
         "T": T, "M": M, "K": K,
-        "Vmax": Vmax, "L0": L0, "B": B, "m": m, "P": P, "Pmax": Pmax, "N": N,
+        "Vmax": Vmax, "L0": L0, "B": B, "m": m, "P": P, "Pmax": Pmax, "N": N, "Mbig": Mbig,
         "a": a, "w": w, "g": g, "u": u, "Cp": Cp, "Ca": Ca, "n": n, "Jmin": Jmin, "Jmax": Jmax, "IM0": IM0,
         "F": F, "Qmax": Qmax, "Hmax": Hmax, "I0": I0, "Cv": Cv, "Cf": Cf,
-        "d": d, "Mbig": Mbig
+        "d": d
     }
 
 def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: bool = True, sheet_name: str = "Solution"):
-	import xlsxwriter#libreria para crear excel
-
+	# Libreria para crear excel
+	import xlsxwriter
 
 	parsed = {}  
 	max_day = 0
@@ -137,6 +130,7 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 			print("No se pudo crear el excel", e)
 			return
 
+		# Escribir objetivo, GAP y status
 		status = getattr(m, "status", None)
 		try:
 			obj = m.objVal
@@ -146,12 +140,22 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 			except Exception:
 				obj = None
 
+		try:
+			gap = m.MIPGap
+		except Exception:
+			try:
+				gap = m.getAttr("MIPGap")
+			except Exception:
+				gap = None
+
 		ws.write(0, 0, "Z*")
 		ws.write(0, 1, obj if obj is not None else "(n/a)")
 		ws.write(1, 0, "Model status:")
 		ws.write(1, 1, str(status))
+		ws.write(2, 0, "GAP:")
+		ws.write(2, 1, gap if gap is not None else "(n/a)")
 
-		start_row = 3
+		start_row = 4
 		ws.write(start_row, 0, "Variable")
 		for j, base in enumerate(sorted(parsed.keys()), start=1):
 			ws.write(start_row, j, base)
@@ -192,21 +196,6 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 		print("No se pudo crear el excel", e)
 		return
 
-	
-	status = getattr(m, "status", None)
-	try:
-		obj = m.objVal
-	except Exception:
-		try:
-			obj = m.getAttr("ObjVal")
-		except Exception:
-			obj = None
-
-	ws.write(0, 0, "Z*")
-	ws.write(0, 1, obj if obj is not None else "(n/a)")
-	ws.write(1, 0, "Model status:")
-	ws.write(1, 1, str(status))
-
 
 	status = getattr(m, "status", None)
 	try:
@@ -232,7 +221,7 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 	ws.write(2, 0, "GAP:")
 	ws.write(2, 1, gap if gap is not None else "(n/a)")
 
-	start_row = 3
+	start_row = 4
 	ws.write(start_row, 0, "Day")
 	for j, (base, pk) in enumerate(columns, start=1):
 		if pk == ():
