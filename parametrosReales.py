@@ -1,4 +1,3 @@
-# parametros_reales.py
 # Parámetros reales extraídos del informe Datos_E3.pdf
 
 T = 365  # días
@@ -31,7 +30,7 @@ Jmin = {1: 784.9, 2: 3534.34}
 Jmax = {1: 1569.8, 2: 7068.68}
 
 di = {1: 1412.82, 2: 6361.81}
-d = {(i, t): di[i] for i in I_prod for t in I_days}  # Demanda suficiente (no restrictiva)
+d = {(i, t): di[i] for i in I_prod for t in I_days}  # Demanda suficiente 
 
 # Fracción de agua a cada relave
 F = {1: 0.3, 2: 0.4}
@@ -45,7 +44,7 @@ Hmax = {1: 1643000000, 2: 790000}
 # Cantidad inicial de agua por relave (m³)
 I0 = {1: 1363690000, 2: 655700}
 
-# Costo variable y fijo por m³ bombeado desde relave (US$/m³) — energía/opex
+# Costo variable y fijo por m³ bombeado desde relave (US$/m³) 
 Cv = {1: 32.7, 2: 10.9}   # Costo variable
 Cf = {1: 69.9, 2: 75.3}   # Costo fijo
 

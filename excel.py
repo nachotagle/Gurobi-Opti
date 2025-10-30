@@ -1,8 +1,5 @@
-
-
 from typing import Optional
 import pandas as pd
-
 import pandas as pd
 
 def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
@@ -70,14 +67,13 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
                         d[(i, t)] = val
 
     if not d:
-        # fallback: demanda no restrictiva (igual que tu auxiliar)
+        # fallback: demanda no restrictiva
         I_prod = range(1, M+1); I_days = range(1, T+1)
         for i in I_prod:
             for t in I_days:
                 d[(i,t)] = 2.0 * Jmax[i]
 
-    # ---- Big-M razonable para ventas ----
-    # M_i = (N / n_i) + Jmax_i ; usamos un Mbig global compatible con tu modelo
+    # ---- Big-M razonable para ventas
     Mbig = max((N / max(n[i], 1e-9)) + Jmax[i] for i in range(1, M+1))
 
     print(f"[Excel] Cargado: T={T}, M={M}, K={K} | hojas={xl.sheet_names}")
@@ -89,17 +85,10 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
         "d": d, "Mbig": Mbig
     }
 
-
-
 def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: bool = True, sheet_name: str = "Solution"):
-	try:
-		import xlsxwriter
-	except Exception:
-		print("XlsxWriter is required to write Excel files. Install with: pip install XlsxWriter")
-		return
-
-	# parse variables into (base, indices) map
-	parsed = {}  # base -> dict of tuple(indices) -> value
+	import xlsxwriter#libreria para crear excel
+	
+	parsed = {}  
 	max_day = 0
 
 	for v in m.getVars():
@@ -119,7 +108,6 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 			base = name
 			key = tuple()
 
-		# get value
 		val = None
 		try:
 			val = v.X
@@ -135,21 +123,18 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 			continue
 
 		parsed.setdefault(base, {})[key] = val
-		# if last index numeric, consider it a day
 		if len(key) >= 1 and isinstance(key[-1], int):
 			if key[-1] > max_day:
 				max_day = key[-1]
 
 	if max_day == 0:
-		# no day-indexed variables found; fall back to previous behavior: list variables vertically
 		try:
 			wb = xlsxwriter.Workbook(filename)
 			ws = wb.add_worksheet(sheet_name)
 		except Exception as e:
-			print("Could not create Excel workbook:", e)
+			print("No se pudo crear el excel", e)
 			return
 
-		# write objective and status in top-left summary
 		status = getattr(m, "status", None)
 		try:
 			obj = m.objVal
@@ -165,30 +150,25 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 		ws.write(1, 1, str(status))
 
 		start_row = 3
-		# header
 		ws.write(start_row, 0, "Variable")
 		for j, base in enumerate(sorted(parsed.keys()), start=1):
 			ws.write(start_row, j, base)
 
-		# single row with values (use first key if multiple)
 		for j, base in enumerate(sorted(parsed.keys()), start=1):
 			vals = parsed[base]
-			# pick a representative value
 			if vals:
 				first = next(iter(vals.values()))
 				ws.write(start_row + 1, j, first)
 
 		try:
 			wb.close()
-			print(f"Wrote solution to {filename}")
+			print(f"Solucion en {filename}")
 		except Exception as e:
-			print("Could not save Excel file:", e)
+			print("No se pudo guardar", e)
 		return
 
-	# Build column list: for each base, for each prefix (indices except last) create a column
-	columns = []  # list of (base, prefix_key)
+	columns = [] 
 	for base, table in parsed.items():
-		# collect all keys that end with numeric day
 		prefixes = set()
 		has_day = False
 		for k in table.keys():
@@ -196,21 +176,21 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 				has_day = True
 				prefixes.add(k[:-1])
 			else:
-				# scalar or non-day-indexed -> treat as prefix ()
+				
 				prefixes.add(k)
 		if has_day:
 			for p in sorted(prefixes):
 				columns.append((base, p))
 
-	# create workbook and sheet
+	# crea el archivo Excel
 	try:
 		wb = xlsxwriter.Workbook(filename)
 		ws = wb.add_worksheet(sheet_name)
 	except Exception as e:
-		print("Could not create Excel workbook:", e)
+		print("No se pudo crear el excel", e)
 		return
 
-	# write objective and status in top-left summary
+	
 	status = getattr(m, "status", None)
 	try:
 		obj = m.objVal
@@ -225,8 +205,32 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 	ws.write(1, 0, "Model status:")
 	ws.write(1, 1, str(status))
 
+
+	status = getattr(m, "status", None)
+	try:
+		obj = m.objVal
+	except Exception:
+		try:
+			obj = m.getAttr("ObjVal")
+		except Exception:
+			obj = None
+
+	try:
+		gap = m.MIPGap
+	except Exception:
+		try:
+			gap = m.getAttr("MIPGap")
+		except Exception:
+			gap = None
+
+	ws.write(0, 0, "Z*")
+	ws.write(0, 1, obj if obj is not None else "(n/a)")
+	ws.write(1, 0, "Model status:")
+	ws.write(1, 1, str(status))
+	ws.write(2, 0, "GAP:")
+	ws.write(2, 1, gap if gap is not None else "(n/a)")
+
 	start_row = 3
-	# Header row: Day then one column per variable-instance
 	ws.write(start_row, 0, "Day")
 	for j, (base, pk) in enumerate(columns, start=1):
 		if pk == ():
@@ -235,14 +239,12 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 			colname = base + "_" + "_".join(str(x) for x in pk)
 		ws.write(start_row, j, colname)
 
-	# Fill rows for days 1..max_day
 	for day in range(1, max_day + 1):
 		ws.write(start_row + day, 0, day)
 		for j, (base, pk) in enumerate(columns, start=1):
 			key = pk + (day,) if pk != () else (day,)
 			val = parsed.get(base, {}).get(key, None)
 			if val is None:
-				# missing entry -> leave blank
 				continue
 			if abs(val - round(val)) < 1e-9:
 				ws.write(start_row + day, j, int(round(val)))
@@ -251,8 +253,7 @@ def write_solution_to_excel(m, filename: str = "solution.xlsx", include_zeros: b
 
 	try:
 		wb.close()
-		print(f"Wrote solution to {filename}")
+		print(f"Solucion en {filename}")
 	except Exception as e:
-		print("Could not save Excel file:", e)
+		print("No se pudo guardar", e)
 
-#def fetch_params_from
