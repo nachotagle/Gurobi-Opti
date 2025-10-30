@@ -42,17 +42,13 @@ def build_model(params: Dict[str, Any]):
     IM = m.addVars(I_prod, I_days, name="IM", lb=0.0)                       # IM_{i,t}
     S = m.addVars(I_prod, I_days, name="S", lb=0.0)                         # S_{i,t} (dentro demanda)
     So = m.addVars(I_prod, I_days, name="So", lb=0.0)                       # So_{i,t} (sobre demanda)
-    z = m.addVars(I_prod, I_days, vtype=GRB.BINARY, name="z")               # z_{i,t}
 
     # Emisiones
-    V = m.addVars(I_days, name="V", lb=0.0)                                 # V_t (exceso diario, no negativo)
+    V = m.addVar(name="V", lb=0.0)                                         # V (exceso anual, no negativo)
     R = m.addVar(vtype=GRB.BINARY, name="R")                                # R (paga multa)
 
     # Flujo de caja
     A = m.addVars(I_days, name="A", lb=-GRB.INFINITY)                       # A_t (puede ser real, sin cota)
-
-    # Big-M por producto (más apretado que un M global)
-    M_i = {i: (params["N"] / params["n"][i]) + params["Jmax"][i] for i in I_prod}   # (ton)
 
     # === Restricciones ===
     # 1. Embalse: L_t = L_{t-1} + sum_k G_{k,t} + E_t - D_t
@@ -90,46 +86,29 @@ def build_model(params: Dict[str, Any]):
         for t in I_days:
             m.addConstr(U[k,t] == params["F"][k] * quicksum(x[i,t]*params["a"][i] for i in I_prod), name=f"T_def_{k}_{t}")
             m.addConstr(G[k,t] <= y[k,t] * params["Qmax"][k], name=f"B_Qmax_{k}_{t}")
-            m.addConstr(G[k,t] <= I[k,t], name=f"B_le_I_{k}_{t}")
 
-    # 8. Agua externa: E_t = D_t - sum_k G_{k,t}
-    for t in I_days:
-        m.addConstr(E[t] == D[t] - quicksum(G[k,t] for k in I_tail), name=f"E_def_{t}")
-
-    # 9. Demanda y disponibilidad para ventas
+    # 8. Satisfacción de demanda
     for i in I_prod:
         for t in I_days:
             m.addConstr(S[i,t] <= params["d"][i,t], name=f"H_in_le_d_{i}_{t}")
-            # S + So ≤ IM_{i,t-1} + x_{i,t}
-            if t == 1:
-                m.addConstr(S[i,t] + So[i,t] <= params["IM0"][i] + x[i,t], name=f"ventas_disp_{i}_{t}")
-            else:
-                m.addConstr(S[i,t] + So[i,t] <= IM[i,t-1] + x[i,t], name=f"ventas_disp_{i}_{t}")
 
-    # 10. Presupuesto máximo para bombas y agua externa (diario)
+    # 9. Presupuesto máximo para bombas y agua externa (diario)
     for t in I_days:
         term_bombas = quicksum(params["Cv"][k]*G[k,t] + params["Cf"][k]*y[k,t] for k in I_tail)
         m.addConstr(term_bombas + params["P"]*E[t] <= params["Pmax"], name=f"presupuesto_{t}")
     
-    # 11. Exceso de emisiones diario (V_t >= emisiones_diarias - umbral_diario)
+    # 10. Exceso de emisiones diario (V >= emisiones_diarias - umbral_diario)
     for t in I_days:
-        m.addConstr(V[t] >= quicksum(x[i,t]*params["w"][i] for i in I_prod) - params["B"], name=f"V_def_{t}")
+        m.addConstr(V >= quicksum(x[i,t]*params["w"][i] for i in I_prod) - params["B"], name=f"V_def_{t}")
 
-    # 12. Multa por exceso de emisiones (uso de M grande para activar R)
+    # 11. Multa por exceso de emisiones (uso de M grande para activar R)
     for t in I_days:
-        m.addConstr(V[t] <= params["Mbig"] * R, name=f"V_le_MR_{t}")
+        m.addConstr(V <= params["Mbig"] * R, name=f"V_le_MR_{t}")
 
-    # 13. Ventas dentro/sobre demanda
-    for i in I_prod:
-        for t in I_days:
-            m.addConstr(So[i,t] <= M_i[i] * z[i,t], name=f"So_le_Mz_{i}_{t}")
-            m.addConstr(params["d"][i,t] - S[i,t] <= M_i[i]*(1 - z[i,t]), name=f"saturate_S[{i},{t}]")
-
-
-    # 14. Inventario del producto i
+    # 12. Inventario del producto i
     for i in I_prod:
         # IM_{i,1} = x_{i,1} - So_{i,1} - S_{i,1}
-        m.addConstr(IM[i,1] == x[i,1] - So[i,1] - S[i,1], name=f"IM_init_{i}")
+        m.addConstr(IM[i,1] == params["IM0"][i] + x[i,1] - So[i,1] - S[i,1], name=f"IM_init_{i}")
         for t in range(2, T+1):
             m.addConstr(IM[i,t] == IM[i,t-1] + x[i,t] - So[i,t] - S[i,t], name=f"IM_flow_{i}_{t}")
     for t in I_days:
@@ -143,12 +122,11 @@ def build_model(params: Dict[str, Any]):
         costo_bombas = quicksum(params["Cv"][k]*G[k,t] + params["Cf"][k]*y[k,t] for k in I_tail)
         costo_agua_ext = params["P"]*E[t]
         costo_prod = quicksum(x[i,t]*params["Cp"][i] for i in I_prod)
-        multa = params["m"] * V[t]
-        m.addConstr(A[t] == ventas_normales + ventas_extra - costo_inv - costo_bombas - costo_agua_ext - costo_prod - multa,
+        m.addConstr(A[t] == ventas_normales + ventas_extra - costo_inv - costo_bombas - costo_agua_ext - costo_prod,
                     name=f"flujo_caja_{t}")
 
     # === Función Objetivo ===
-    m.setObjective(quicksum(A[t] for t in I_days), GRB.MAXIMIZE)
+    m.setObjective(quicksum(A[t] for t in I_days) - params["m"] * V, GRB.MAXIMIZE)
 
     return m
 

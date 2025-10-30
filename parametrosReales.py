@@ -59,8 +59,8 @@ L0 = 4290000
 P = 5.45      # Costo agua externa
 Pmax = 1e7   # Presupuesto máximo diario
 
-# Umbra de emisiones diarias permitidas (ton SO2/día)
-B = 110
+# Umbra de emisiones diarias permitidas (ton SO2/año)
+B = 110 * 365
 
 # Multa por exceso de emisiones (US$/ton SO2)
 m = 0
