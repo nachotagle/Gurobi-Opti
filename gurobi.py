@@ -40,8 +40,8 @@ def build_model(params: Dict[str, Any]):
     # Producción y ventas
     x = m.addVars(I_prod, I_days, name="x", lb=0.0)                         # x_{i,t}
     IM = m.addVars(I_prod, I_days, name="IM", lb=0.0)                       # IM_{i,t}
-    Hin = m.addVars(I_prod, I_days, name="Hin", lb=0.0)                   # Hin_{i,t} (dentro demanda)
-    hout = m.addVars(I_prod, I_days, name="hout", lb=0.0)               # hout_{i,t} (sobre demanda)
+    S = m.addVars(I_prod, I_days, name="S", lb=0.0)                         # S_{i,t} (dentro demanda)
+    So = m.addVars(I_prod, I_days, name="So", lb=0.0)                       # So_{i,t} (sobre demanda)
     z = m.addVars(I_prod, I_days, vtype=GRB.BINARY, name="z")               # z_{i,t}
 
     # Emisiones
@@ -50,6 +50,9 @@ def build_model(params: Dict[str, Any]):
 
     # Flujo de caja
     A = m.addVars(I_days, name="A", lb=-GRB.INFINITY)                       # A_t (puede ser real, sin cota)
+
+    # Big-M por producto (más apretado que un M global)
+    M_i = {i: (params["N"] / params["n"][i]) + params["Jmax"][i] for i in I_prod}   # (ton)
 
     # === Restricciones ===
     # 1. Embalse: L_t = L_{t-1} + sum_k G_{k,t} + E_t - D_t
@@ -73,11 +76,11 @@ def build_model(params: Dict[str, Any]):
             m.addConstr(x[i,t] >= params["Jmin"][i], name=f"xmin_{i}_{t}")
             m.addConstr(x[i,t] <= params["Jmax"][i], name=f"xmax_{i}_{t}")
 
-    # 5. Capacidad máxima embalse: 0 <= L_t <= Vmax  (no negatividad ya en lb=0)
+    # 5. Capacidad máxima embalse: L_t <= Vmax  (no negatividad ya en lb=0)
     for t in I_days:
         m.addConstr(L[t] <= params["Vmax"], name=f"cap_embalse_{t}")
 
-    # 6. Capacidad máxima relave: 0 <= I_{k,t} <= Hmax_k
+    # 6. Capacidad máxima relave: I_{k,t} <= Hmax_k
     for k in I_tail:
         for t in I_days:
             m.addConstr(I[k,t] <= params["Hmax"][k], name=f"cap_relave_{k}_{t}")
@@ -96,24 +99,19 @@ def build_model(params: Dict[str, Any]):
     # 9. Demanda y disponibilidad para ventas
     for i in I_prod:
         for t in I_days:
-            m.addConstr(Hin[i,t] <= params["d"][i,t], name=f"H_in_le_d_{i}_{t}")
-            # H_in + h_over ≤ IM_{i,t-1} + x_{i,t}
+            m.addConstr(S[i,t] <= params["d"][i,t], name=f"H_in_le_d_{i}_{t}")
+            # S + So ≤ IM_{i,t-1} + x_{i,t}
             if t == 1:
-                # IM_{i,0} no está definido en el texto; usamos IM[i,1] vía restricción 14.
-                # Aquí seguimos la fórmula del documento literalmente: usamos IM[i,0] + x[i,1].
-                # Para mantener consistencia, igualamos IM[i,0] a 0 implícitamente (no definido en el texto).
-                # Alternativamente, se puede pasar IM0[i] en params; si existe, úsese.
-                IM0i = params.get("IM0", {}).get(i, 0.0)
-                m.addConstr(Hin[i,t] + hout[i,t] <= IM0i + x[i,t], name=f"ventas_disp_{i}_{t}")
+                m.addConstr(S[i,t] + So[i,t] <= params["IM0"][i] + x[i,t], name=f"ventas_disp_{i}_{t}")
             else:
-                m.addConstr(Hin[i,t] + hout[i,t] <= IM[i,t-1] + x[i,t], name=f"ventas_disp_{i}_{t}")
+                m.addConstr(S[i,t] + So[i,t] <= IM[i,t-1] + x[i,t], name=f"ventas_disp_{i}_{t}")
 
     # 10. Presupuesto máximo para bombas y agua externa (diario)
     for t in I_days:
         term_bombas = quicksum(params["Cv"][k]*G[k,t] + params["Cf"][k]*y[k,t] for k in I_tail)
         m.addConstr(term_bombas + params["P"]*E[t] <= params["Pmax"], name=f"presupuesto_{t}")
     
-    # 11. Exceso de emisiones diario (V_t = emisiones_diarias - umbral_diario)
+    # 11. Exceso de emisiones diario (V_t >= emisiones_diarias - umbral_diario)
     for t in I_days:
         m.addConstr(V[t] >= quicksum(x[i,t]*params["w"][i] for i in I_prod) - params["B"], name=f"V_def_{t}")
 
@@ -124,24 +122,23 @@ def build_model(params: Dict[str, Any]):
     # 13. Ventas dentro/sobre demanda
     for i in I_prod:
         for t in I_days:
-            m.addConstr(Hin[i,t] <= params["d"][i,t], name=f"H_in_d_{i}_{t}")
-            m.addConstr(hout[i,t] <= params["Mbig"] * z[i,t], name=f"hover_le_Mz_{i}_{t}")
-            # El documento usa I_{i,t}; aquí se usa IM[i,t]
-            m.addConstr(hout[i,t] + Hin[i,t] <= IM[i,t], name=f"ventas_le_IM_{i}_{t}")
+            m.addConstr(So[i,t] <= M_i[i] * z[i,t], name=f"So_le_Mz_{i}_{t}")
+            m.addConstr(params["d"][i,t] - S[i,t] <= M_i[i]*(1 - z[i,t]), name=f"saturate_S[{i},{t}]")
+
 
     # 14. Inventario del producto i
     for i in I_prod:
-        # IM_{i,1} = x_{i,1} - h_{i,1} - H_{i,1}
-        m.addConstr(IM[i,1] == x[i,1] - hout[i,1] - Hin[i,1], name=f"IM_init_{i}")
+        # IM_{i,1} = x_{i,1} - So_{i,1} - S_{i,1}
+        m.addConstr(IM[i,1] == x[i,1] - So[i,1] - S[i,1], name=f"IM_init_{i}")
         for t in range(2, T+1):
-            m.addConstr(IM[i,t] == IM[i,t-1] + x[i,t] - hout[i,t] - Hin[i,t], name=f"IM_flow_{i}_{t}")
+            m.addConstr(IM[i,t] == IM[i,t-1] + x[i,t] - So[i,t] - S[i,t], name=f"IM_flow_{i}_{t}")
     for t in I_days:
         m.addConstr(quicksum(IM[i,t]*params["n"][i] for i in I_prod) <= params["N"], name=f"cap_almacen_{t}")
 
     # 15. Flujo neto de caja diario
     for t in I_days:
-        ventas_normales = quicksum(Hin[i,t]*params["g"][i] for i in I_prod)
-        ventas_extra = quicksum(hout[i,t]*params["u"][i] for i in I_prod)
+        ventas_normales = quicksum(S[i,t]*params["g"][i] for i in I_prod)
+        ventas_extra = quicksum(So[i,t]*params["u"][i] for i in I_prod)
         costo_inv = quicksum(IM[i,t]*params["Ca"][i] for i in I_prod)
         costo_bombas = quicksum(params["Cv"][k]*G[k,t] + params["Cf"][k]*y[k,t] for k in I_tail)
         costo_agua_ext = params["P"]*E[t]
@@ -157,7 +154,6 @@ def build_model(params: Dict[str, Any]):
 
 
 if __name__ == "__main__":
-
 
     def print_solution(m):
         """Imprime el objetivo (si está) y el valor de todas las variables encontradas en la solución."""
@@ -213,15 +209,15 @@ if __name__ == "__main__":
     model = build_model(params)
     # model.Params.OutputFlag = 0  # Silenciar salida si se desea
     model.optimize()
-    
-    # Impresión rápida de valor objetivo (si el modelo es factible)
+
     if model.status == GRB.OPTIMAL:
-        #print_solution(model)
         print("Z* =", model.objVal)
-        # Export to Excel if helper is available
+
+        # Exportador a Excel (tu flujo actual)
         if write_solution_to_excel is not None:
             try:
-                write_solution_to_excel(model, filename="solution.xlsx", include_zeros=False)
+                write_solution_to_excel(model, filename="solution.xlsx", include_zeros=True)
             except Exception as e:
                 print("Warning: could not write solution to Excel:", e)
+
         

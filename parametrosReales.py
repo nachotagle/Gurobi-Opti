@@ -27,13 +27,13 @@ Ca = {1: 0.001392, 2: 0.03104} # Costo de almacenaje
 n = {1: 0.348, 2: 0.776}
 
 # Límites de producción diarios (ton/día de producto)
-Jmin = {1: 0, 2: 0}
+Jmin = {1: 784.9, 2: 3534.34}
 Jmax = {1: 1569.8, 2: 7068.68}
 
 d = {(i, t): Jmax[i] * 2 for i in I_prod for t in I_days}  # Demanda suficiente (no restrictiva)
 
 # Fracción de agua a cada relave
-F = {1: 0.3, 2: 0.7}
+F = {1: 0.3, 2: 0.4}
 
 # Capacidad maxima de transporte de agua desde relaves (m³)
 Qmax = {1: 136272, 2: 136272}
@@ -42,21 +42,21 @@ Qmax = {1: 136272, 2: 136272}
 Hmax = {1: 1643000000, 2: 790000}
 
 # Cantidad inicial de agua por relave (m³)
-I0 = {1: 0, 2: 0}
+I0 = {1: 1363690000, 2: 655700}
 
 # Costo variable y fijo por m³ bombeado desde relave (US$/m³) — energía/opex
 Cv = {1: 32.7, 2: 10.9}   # Costo variable
-Cf = {1: 69.9, 2: 69.9}   # Costo fijo
+Cf = {1: 69.9, 2: 75.3}   # Costo fijo
 
 # Capacidad maxima de almacenamiento de agua en el embalse (m³)
 Vmax = 6000000
 
 # Almacenamiento inicial de agua en embalse (m³)
-L0 = 0
+L0 = 4290000
 
 # Costo y presupuesto del bombeo de agua externa (US$/m³ y US$/día)
 P = 5.45      # Costo agua externa
-Pmax = 1e6   # Presupuesto máximo diario
+Pmax = 1e7   # Presupuesto máximo diario
 
 # Umbra de emisiones diarias permitidas (ton SO2/día)
 B = 110
@@ -71,6 +71,7 @@ N = 1e6
 IM0 = {1: 0, 2: 0}
 
 Mbig = 1e6
+
 
 params = {
     "T": T, "M": M, "K": K,
