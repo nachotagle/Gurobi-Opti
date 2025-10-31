@@ -2,15 +2,15 @@ from gurobipy import Model, GRB, quicksum
 from typing import Dict, Any, Iterable
 
 
-##importa los parametros desde excel
-# para que funcione, se debe tener instalada la libreria openpyxl y XlsxWriter
-# tambien al ejecutar el main.py los excel deben estar cerrados 
+# Importar los parametros desde excel
+# Para que funcione, se debe tener instalada la libreria openpyxl y XlsxWriter
+# Tambien al ejecutar el main.py los excel deben estar cerrados
 from excel import read_params_from_excel, write_solution_to_excel
 params = read_params_from_excel("parametros_reales.xlsx")
 
-
 # Tipos para claridad
 Index = Iterable[int]
+
 
 def build_model(params: Dict[str, Any]):
     # === Conjuntos ===
@@ -26,9 +26,9 @@ def build_model(params: Dict[str, Any]):
     # Agua y operaciones hídricas
     L = m.addVars(I_days, name="L", lb=0.0)                                # L_t
     I = m.addVars(I_tail, I_days, name="I", lb=0.0)                        # I_{k,t}
-    G = m.addVars(I_tail, I_days, name="G", lb=0.0)                       # G_{k,t}
+    G = m.addVars(I_tail, I_days, name="G", lb=0.0)                        # G_{k,t}
     D = m.addVars(I_days, name="D", lb=0.0)                                # D_t
-    U = m.addVars(I_tail, I_days, name="U", lb=0.0)                       # U_{k,t}
+    U = m.addVars(I_tail, I_days, name="U", lb=0.0)                        # U_{k,t}
     E = m.addVars(I_days, name="E", lb=0.0)                                # E_t
     y = m.addVars(I_tail, I_days, vtype=GRB.BINARY, name="y")              # y_{k,t}
 
@@ -39,7 +39,7 @@ def build_model(params: Dict[str, Any]):
     So = m.addVars(I_prod, I_days, name="So", lb=0.0)                       # So_{i,t} (sobre demanda)
 
     # Emisiones
-    V = m.addVar(name="V", lb=0.0)                                         # V (exceso anual, no negativo)
+    V = m.addVar(name="V", lb=0.0)                                          # V (exceso anual, no negativo)
     R = m.addVar(vtype=GRB.BINARY, name="R")                                # R (paga multa)
 
     # Flujo de caja
@@ -135,11 +135,11 @@ if __name__ == "__main__":
         print("Z* =", model.objVal)
         print("GAP =", model.MIPGap)
 
-        # Exportar a Excel 
+        # Exportador a Excel
         if write_solution_to_excel is not None:
             try:
                 write_solution_to_excel(model, filename="solution.xlsx", include_zeros=True)
             except Exception as e:
-                print("no se pudo crear el Excel", e)
+                print("Warning: could not write solution to Excel:", e)
 
         
