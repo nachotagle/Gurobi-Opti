@@ -121,7 +121,7 @@ def build_model(params: Dict[str, Any]):
                     name=f"flujo_caja_{t}")
 
     # === Función Objetivo ===
-    m.setObjective(quicksum(A[t] for t in I_days) - params["m"] * V, GRB.MAXIMIZE)
+    m.setObjective(quicksum(A[t] for t in I_days) - (params["mv"] * V + params["mf"] * R), GRB.MAXIMIZE)
 
     return m
 
@@ -141,5 +141,3 @@ if __name__ == "__main__":
                 write_solution_to_excel(model, filename="solution.xlsx", include_zeros=True)
             except Exception as e:
                 print("Warning: could not write solution to Excel:", e)
-
-        
