@@ -7,7 +7,6 @@ from typing import Dict, Any, Iterable
 # Tambien al ejecutar el main.py los excel deben estar cerrados
 from excel import read_params_from_excel, write_solution_to_excel
 params = read_params_from_excel("parametros_reales.xlsx")
-
 # Tipos para claridad
 Index = Iterable[int]
 
@@ -38,8 +37,7 @@ def build_model(params: Dict[str, Any]):
     IM = m.addVars(I_prod, I_days, name="IM", lb=0.0)                       # IM_{i,t}
     S = m.addVars(I_prod, I_days, name="S", lb=0.0)                         # S_{i,t} (dentro demanda)
     So = m.addVars(I_prod, I_days, name="So", lb=0.0)                       # So_{i,t} (sobre demanda)
-    bwt = m.addVars(I_days, vtype=GRB.CONTINUOUS, name="bwt")               # costo extra por bombeo externo
-
+    bt = m.addVars(I_days, vtype=GRB.CONTINUOUS, name="bt")                 # bt (beneficio recirculacion)
 
     # Emisiones
     V = m.addVar(name="V", lb=0.0)                                          # V (exceso anual, no negativo)
@@ -130,13 +128,13 @@ def build_model(params: Dict[str, Any]):
 
     for t in I_days:
         m.addConstr(
-            bwt[t] == params["cw"] * quicksum(G[k,t] for k in I_tail),
+            bt[t] == params["c"] * quicksum(G[k,t] for k in I_tail),
             name=f"beneficio_recirculacion_{t}"
         )
 
 
     # === Función Objetivo ===
-    m.setObjective(quicksum(A[t]+bwt[t] for t in I_days) - (params["mv"] * V + params["mf"] * R), GRB.MAXIMIZE)
+    m.setObjective(quicksum(A[t]+bt[t] for t in I_days) - (params["mv"] * V + params["mf"] * R), GRB.MAXIMIZE)
 
     return m
 
