@@ -26,6 +26,7 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
     mv   = float(scal.get("mv", 0.0))
     mf   = float(scal.get("mf", 0.0))
     P   = float(scal.get("P", 0.0))
+    Pf  = float(scal.get("Pf", 0.0))
     Pmax= float(scal.get("Pmax", 1e9))
     N   = float(scal.get("N", 1e12))
     Mbig = float(scal.get("Mbig", 1e12))
@@ -74,7 +75,7 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
 
     return {
         "T": T, "M": M, "K": K,
-        "Vmax": Vmax, "L0": L0, "B": B, "mv": mv, "mf": mf, "P": P, "Pmax": Pmax, "N": N, "Mbig": Mbig,
+        "Vmax": Vmax, "L0": L0, "B": B, "mv": mv, "mf": mf, "P": P, "Pf": Pf,"Pmax": Pmax, "N": N, "Mbig": Mbig,
         "a": a, "w": w, "g": g, "u": u, "Cp": Cp, "Ca": Ca, "n": n, "Jmin": Jmin, "Jmax": Jmax, "IM0": IM0,
         "F": F, "Qmax": Qmax, "Hmax": Hmax, "I0": I0, "Cv": Cv, "Cf": Cf,
         "d": d
