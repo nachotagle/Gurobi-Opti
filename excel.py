@@ -29,8 +29,9 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
     Pf  = float(scal.get("Pf", 0.0))
     Pmax= float(scal.get("Pmax", 1e9))
     N   = float(scal.get("N", 1e12))
+    cw  = float(scal.get("cw", 0.0))
     Mbig = float(scal.get("Mbig", 1e12))
-
+	
     # ---- PorProducto ----
     prod = pd.read_excel(filename, sheet_name="PorProducto")
     prod.columns = [str(c).strip() for c in prod.columns]
@@ -75,7 +76,7 @@ def read_params_from_excel(filename: str = "parametros_reales.xlsx", **kwargs):
 
     return {
         "T": T, "M": M, "K": K,
-        "Vmax": Vmax, "L0": L0, "B": B, "mv": mv, "mf": mf, "P": P, "Pf": Pf,"Pmax": Pmax, "N": N, "Mbig": Mbig,
+        "Vmax": Vmax, "L0": L0, "B": B, "mv": mv, "mf": mf, "P": P, "Pf": Pf,"Pmax": Pmax, "N": N, "Mbig": Mbig, "cw": cw,
         "a": a, "w": w, "g": g, "u": u, "Cp": Cp, "Ca": Ca, "n": n, "Jmin": Jmin, "Jmax": Jmax, "IM0": IM0,
         "F": F, "Qmax": Qmax, "Hmax": Hmax, "I0": I0, "Cv": Cv, "Cf": Cf,
         "d": d

@@ -38,6 +38,8 @@ def build_model(params: Dict[str, Any]):
     IM = m.addVars(I_prod, I_days, name="IM", lb=0.0)                       # IM_{i,t}
     S = m.addVars(I_prod, I_days, name="S", lb=0.0)                         # S_{i,t} (dentro demanda)
     So = m.addVars(I_prod, I_days, name="So", lb=0.0)                       # So_{i,t} (sobre demanda)
+    bwt = m.addVars(I_days, vtype=GRB.CONTINUOUS, name="bwt")               # costo extra por bombeo externo
+
 
     # Emisiones
     V = m.addVar(name="V", lb=0.0)                                          # V (exceso anual, no negativo)
@@ -125,11 +127,18 @@ def build_model(params: Dict[str, Any]):
         m.addConstr(A[t] == ventas_normales + ventas_extra - costo_inv - costo_bombas - costo_agua_ext - costo_prod,
                     name=f"flujo_caja_{t}")
 
+
+    for t in I_days:
+        m.addConstr(
+            bwt[t] == params["cw"] * quicksum(G[k,t] for k in I_tail),
+            name=f"beneficio_recirculacion_{t}"
+        )
+
+
     # === Función Objetivo ===
-    m.setObjective(quicksum(A[t] for t in I_days) - (params["mv"] * V + params["mf"] * R), GRB.MAXIMIZE)
+    m.setObjective(quicksum(A[t]+bwt[t] for t in I_days) - (params["mv"] * V + params["mf"] * R), GRB.MAXIMIZE)
 
     return m
-
 
 if __name__ == "__main__":
 
