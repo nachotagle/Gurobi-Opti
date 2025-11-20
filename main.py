@@ -7,6 +7,7 @@ from typing import Dict, Any, Iterable
 # Tambien al ejecutar el main.py los excel deben estar cerrados
 from excel import read_params_from_excel, write_solution_to_excel
 params = read_params_from_excel("parametros_reales.xlsx")
+
 # Tipos para claridad
 Index = Iterable[int]
 
