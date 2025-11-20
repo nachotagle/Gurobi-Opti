@@ -133,6 +133,10 @@ def build_model(params: Dict[str, Any]):
             name=f"beneficio_recirculacion_{t}"
         )
 
+    for t in I_days:
+        m.addConstr(D[t] == quicksum(G[k,t] for k in I_tail) + E[t],
+                        name=f"balance_agua_t_{t}")
+
 
     # === Función Objetivo ===
     m.setObjective(quicksum(A[t]+bt[t] for t in I_days) - (params["mv"] * V + params["mf"] * R), GRB.MAXIMIZE)
