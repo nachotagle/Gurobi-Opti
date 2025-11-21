@@ -38,7 +38,7 @@ def build_model(params: Dict[str, Any]):
     IM = m.addVars(I_prod, I_days, name="IM", lb=0.0)                       # IM_{i,t}
     S = m.addVars(I_prod, I_days, name="S", lb=0.0)                         # S_{i,t} (dentro demanda)
     So = m.addVars(I_prod, I_days, name="So", lb=0.0)                       # So_{i,t} (sobre demanda)
-    bt = m.addVars(I_days, vtype=GRB.CONTINUOUS, name="bt")                 # bt (beneficio recirculacion)
+    
 
     # Emisiones
     V = m.addVar(name="V", lb=0.0)                                          # V (exceso anual, no negativo)
@@ -117,31 +117,21 @@ def build_model(params: Dict[str, Any]):
 
 
 
-    # 14. Beneficio por recirculación de agua
-    for t in I_days:
-        m.addConstr(
-            bt[t] == params["c"] * quicksum(G[k,t] for k in I_tail),
-            name=f"beneficio_recirculacion_{t}"
-        )
+    
 
     # 15. Flujo neto de caja diario
     for t in I_days:
         ventas_normales = quicksum(S[i,t]*params["g"][i] for i in I_prod)
         ventas_extra = quicksum(So[i,t]*params["u"][i] for i in I_prod)
         costo_inv = quicksum(IM[i,t]*params["Ca"][i] for i in I_prod)
-        costo_bombas = quicksum(params["Cv"][k]*G[k,t] + params["Cf"][k]*y[k,t] for k in I_tail)
+        costo_bombas = quicksum((params["Cv"][k]-params["c"])*G[k,t] + params["Cf"][k]*y[k,t] for k in I_tail)
         costo_agua_ext = params["P"]*E[t] + params["Pf"]*Q[t]
         costo_prod = quicksum(x[i,t]*params["Cp"][i] for i in I_prod)
         m.addConstr(A[t] == ventas_normales + ventas_extra - costo_inv - costo_bombas - costo_agua_ext - costo_prod,
                     name=f"flujo_caja_{t}")
-
-
-
     
-
-
     # === Función Objetivo ===
-    m.setObjective(quicksum(A[t]+bt[t] for t in I_days) - (params["mv"] * V + params["mf"] * R), GRB.MAXIMIZE)
+    m.setObjective(quicksum(A[t]for t in I_days) - (params["mv"] * V + params["mf"] * R), GRB.MAXIMIZE)
 
     return m
 
