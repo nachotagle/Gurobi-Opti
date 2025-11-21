@@ -116,10 +116,7 @@ def build_model(params: Dict[str, Any]):
         m.addConstr(quicksum(IM[i,t]*params["n"][i] for i in I_prod) <= params["N"], name=f"cap_almacen_{t}")
 
 
-
-    
-
-    # 15. Flujo neto de caja diario
+    # 14. Flujo neto de caja diario
     for t in I_days:
         ventas_normales = quicksum(S[i,t]*params["g"][i] for i in I_prod)
         ventas_extra = quicksum(So[i,t]*params["u"][i] for i in I_prod)
