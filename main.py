@@ -127,15 +127,13 @@ def build_model(params: Dict[str, Any]):
                     name=f"flujo_caja_{t}")
 
 
+
+    # 15. Beneficio por recirculación de agua
     for t in I_days:
         m.addConstr(
             bt[t] == params["c"] * quicksum(G[k,t] for k in I_tail),
             name=f"beneficio_recirculacion_{t}"
         )
-
-    for t in I_days:
-        m.addConstr(D[t] == quicksum(G[k,t] for k in I_tail) + E[t],
-                        name=f"balance_agua_t_{t}")
 
 
     # === Función Objetivo ===
