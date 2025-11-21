@@ -124,7 +124,7 @@ def build_model(params: Dict[str, Any]):
         ventas_normales = quicksum(S[i,t]*params["g"][i] for i in I_prod)
         ventas_extra = quicksum(So[i,t]*params["u"][i] for i in I_prod)
         costo_inv = quicksum(IM[i,t]*params["Ca"][i] for i in I_prod)
-        costo_bombas = quicksum((params["Cv"][k]-params["c"])*G[k,t] + params["Cf"][k]*y[k,t] for k in I_tail)
+        costo_bombas = quicksum((params["Cv"][k]-params["b"])*G[k,t] + params["Cf"][k]*y[k,t] for k in I_tail)
         costo_agua_ext = params["P"]*E[t] + params["Pf"]*Q[t]
         costo_prod = quicksum(x[i,t]*params["Cp"][i] for i in I_prod)
         m.addConstr(A[t] == ventas_normales + ventas_extra - costo_inv - costo_bombas - costo_agua_ext - costo_prod,
