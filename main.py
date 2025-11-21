@@ -115,7 +115,16 @@ def build_model(params: Dict[str, Any]):
     for t in I_days:
         m.addConstr(quicksum(IM[i,t]*params["n"][i] for i in I_prod) <= params["N"], name=f"cap_almacen_{t}")
 
-    # 14. Flujo neto de caja diario
+
+
+    # 14. Beneficio por recirculación de agua
+    for t in I_days:
+        m.addConstr(
+            bt[t] == params["c"] * quicksum(G[k,t] for k in I_tail),
+            name=f"beneficio_recirculacion_{t}"
+        )
+
+    # 15. Flujo neto de caja diario
     for t in I_days:
         ventas_normales = quicksum(S[i,t]*params["g"][i] for i in I_prod)
         ventas_extra = quicksum(So[i,t]*params["u"][i] for i in I_prod)
@@ -128,12 +137,7 @@ def build_model(params: Dict[str, Any]):
 
 
 
-    # 15. Beneficio por recirculación de agua
-    for t in I_days:
-        m.addConstr(
-            bt[t] == params["c"] * quicksum(G[k,t] for k in I_tail),
-            name=f"beneficio_recirculacion_{t}"
-        )
+    
 
 
     # === Función Objetivo ===
